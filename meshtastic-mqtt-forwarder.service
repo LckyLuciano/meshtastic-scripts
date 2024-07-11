@@ -1,0 +1,22 @@
+[Unit]
+Description=Meshtastic MQTT Forwarder
+After=unionfs.service
+
+[Service]
+Type=simple
+
+ExecStart=/usr/bin/python3 <path-to-script-goes-here>/meshtastic-mqtt-forwarder.py
+
+User=1000
+Group=1000
+TimeoutStopSec=120
+KillMode=process
+RemainAfterExit=yes
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=mqtt-bridge
+
+
+[Install]
+WantedBy=multi-user.target
