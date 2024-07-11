@@ -1,12 +1,8 @@
 """
 MQTT Topic Bridging Script for Meshtastic
 
-This script bridges MQTT topics from a local MQTT broker to a remote MQTT broker with topic transformation. It subscribes to a specified topic on the local broker, processes incoming messages, and republishes them to a corresponding topic on the remote broker with a different prefix. 
-
-
-Use Case:
-I have a Meshtastic node that sends MQTT data to my local HomeAssistant deployment. Separately, I want to share some of this data with a community-run MQTT server. Since the Meshtastic node can only be configured to connect to one MQTT server, this script allows me to maintain the connection with my local MQTT server while selectively forwarding specific topics to the community server.
-This script allows for topic renaming to ensure compatibility between the two systems. As a result, I can continue to use my local MQTT broker for personal needs while also contributing to the community MQTT broker for data aggregation.
+This script bridges MQTT topics from a local MQTT broker to a remote MQTT broker with topic transformation.
+It subscribes to a specified topic on the local broker, processes incoming messages, and republishes them on the remote broker with a different topic prefix. 
 
 Features:
 - Connects to a local MQTT broker and subscribes to a specified topic.
