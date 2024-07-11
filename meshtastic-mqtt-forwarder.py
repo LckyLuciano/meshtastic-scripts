@@ -39,7 +39,7 @@ logger = logging.getLogger()
 # Local MQTT broker details 
 LOCAL_BROKER = "local-mqtt-ip-or-hostname-here"
 LOCAL_PORT = 1883
-LOCAL_TOPIC = "msh/US/2/e/LongFast/#"
+LOCAL_TOPIC = "msh/US/2/e/LongFast/#" #do not remove the # at the end of the local topic
 LOCAL_USERNAME = "local-username-goes-here"
 LOCAL_PASSWORD = "local-password-goes-here"
 
