@@ -44,7 +44,6 @@ LOCAL_USERNAME = "local-username-goes-here"
 LOCAL_PASSWORD = "local-password-goes-here"
 
 # Remote MQTT broker details
-#REMOTE_BROKER = "mqtt.austinmesh.org" #uncomment this line to contibute to austinmesh.org
 REMOTE_BROKER = "remote-mqtt-ip-or-hostname-here"
 REMOTE_PORT = 1883
 REMOTE_TOPIC_PREFIX = "egr/home/2/e/LongFast/"
