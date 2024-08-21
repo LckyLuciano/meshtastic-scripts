@@ -28,6 +28,7 @@ In the default setup below, incoming message from LOCAL_TOPIC msh/US/2/e/LongFas
 import paho.mqtt.client as mqtt
 import logging
 import sys
+import time
 
 # Configure logging
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -101,7 +102,7 @@ remote_client.loop_start()
 # Keep the script running
 try:
     while True:
-        pass
+        time.sleep(0.1) # Add a small delay to reduce CPU usage
 except KeyboardInterrupt:
     pass
 
