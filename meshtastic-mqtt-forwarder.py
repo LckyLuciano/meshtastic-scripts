@@ -82,22 +82,48 @@ def on_connect(client, userdata, flags, rc, properties=None):
     else:
         logger.error(f"Connection failed with code {rc}")
 
+
+# Callback when disconnected from a broker
+def on_disconnect(client, userdata, rc):
+    if rc != 0:
+        logger.warning(f"Unexpected disconnection from {client._host}, attempting to reconnect...")
+        try:
+            client.reconnect()
+        except Exception as e:
+            logger.error(f"Reconnection failed: {e}")
+
+
+
 # Create a client for the local broker
 local_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id="", protocol=mqtt.MQTTv5, transport="tcp")
 local_client.username_pw_set(LOCAL_USERNAME, LOCAL_PASSWORD)
 local_client.on_message = on_local_message
 local_client.on_connect = on_connect
+local_client.on_disconnect = on_disconnect  # Handle disconnects
 
 # Create a client for the remote broker
 remote_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id="", protocol=mqtt.MQTTv5, transport="tcp")
 remote_client.username_pw_set(REMOTE_USERNAME, REMOTE_PASSWORD)
 remote_client.on_connect = on_connect
+remote_client.on_disconnect = on_disconnect  # Handle disconnects
 
 # Connect to the local broker
-local_client.connect(LOCAL_BROKER, LOCAL_PORT, 60)
+def connect_local():
+    try:
+        local_client.connect(LOCAL_BROKER, LOCAL_PORT, 60)
+    except Exception as e:
+        logger.error(f"Failed to connect to local broker: {e}")
 
 # Connect to the remote broker
-remote_client.connect(REMOTE_BROKER, REMOTE_PORT, 60)
+def connect_remote():
+    try:
+        remote_client.connect(REMOTE_BROKER, REMOTE_PORT, 60)
+    except Exception as e:
+        logger.error(f"Failed to connect to remote broker: {e}")
+
+# Attempt to connect both brokers
+connect_local()
+connect_remote()
 
 # Start the loop to process messages
 local_client.loop_start()
@@ -106,7 +132,7 @@ remote_client.loop_start()
 # Keep the script running
 try:
     while True:
-        pass
+        time.sleep(0.1)  # Add a small delay to reduce CPU usage
 except KeyboardInterrupt:
     pass
 
