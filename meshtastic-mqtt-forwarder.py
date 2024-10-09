@@ -10,6 +10,7 @@ Features:
 - Uses logging to output connection status and message forwarding details, which can be viewed in systemd logs when run as a service.
 - Configured to handle username and password authentication for both brokers.
 - (Optional) Integrates with systemd to run as a managed service with automatic restarts on failure.
+- Should reconnect to broker when disconnected.
 
 Configuration:
 - Update the local and remote broker details including addresses, ports, topics, and credentials.
