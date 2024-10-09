@@ -1,0 +1,10 @@
+[Unit]
+Description=Watchdog for Docker Container
+After=docker.service
+
+[Service]
+ExecStart=/opt/appdata/scripts/watchdog/tc2-bbs-mesh.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
