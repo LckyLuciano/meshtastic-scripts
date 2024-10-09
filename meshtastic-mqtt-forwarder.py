@@ -1,12 +1,8 @@
 """
 MQTT Topic Bridging Script for Meshtastic
 
-This script bridges MQTT topics from a local MQTT broker to a remote MQTT broker with topic transformation. It subscribes to a specified topic on the local broker, processes incoming messages, and republishes them to a corresponding topic on the remote broker with a different prefix. 
-
-
-Use Case:
-I have a Meshtastic node that sends MQTT data to my local HomeAssistant deployment. Separately, I want to share some of this data with a community-run MQTT server. Since the Meshtastic node can only be configured to connect to one MQTT server, this script allows me to maintain the connection with my local MQTT server while selectively forwarding specific topics to the community server.
-This script allows for topic renaming to ensure compatibility between the two systems. As a result, I can continue to use my local MQTT broker for personal needs while also contributing to the community MQTT broker for data aggregation.
+This script bridges MQTT topics from a local MQTT broker to a remote MQTT broker with topic transformation.
+It subscribes to a specified topic on the local broker, processes incoming messages, and republishes them on the remote broker with a different topic prefix. 
 
 Features:
 - Connects to a local MQTT broker and subscribes to a specified topic.
@@ -32,6 +28,7 @@ In the default setup below, incoming message from LOCAL_TOPIC msh/US/2/e/LongFas
 import paho.mqtt.client as mqtt
 import logging
 import sys
+import time
 
 # Configure logging
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -43,12 +40,11 @@ logger = logging.getLogger()
 # Local MQTT broker details 
 LOCAL_BROKER = "local-mqtt-ip-or-hostname-here"
 LOCAL_PORT = 1883
-LOCAL_TOPIC = "msh/US/2/e/LongFast/#"
+LOCAL_TOPIC = "msh/US/2/e/LongFast/#" #do not remove the # at the end of the local topic
 LOCAL_USERNAME = "local-username-goes-here"
 LOCAL_PASSWORD = "local-password-goes-here"
 
 # Remote MQTT broker details
-#REMOTE_BROKER = "mqtt.austinmesh.org" #uncomment this line to contibute to austinmesh.org
 REMOTE_BROKER = "remote-mqtt-ip-or-hostname-here"
 REMOTE_PORT = 1883
 REMOTE_TOPIC_PREFIX = "egr/home/2/e/LongFast/"
