@@ -38,14 +38,14 @@ logger = logging.getLogger()
 
 #####      EDIT THE DETAILS BELOW HERE      #####
 #-----------------------------------------------#
-# Local MQTT broker details 
+# Local broker details
 LOCAL_BROKER = "local-mqtt-ip-or-hostname-here"
 LOCAL_PORT = 1883
 LOCAL_TOPIC = "msh/US/2/e/LongFast/#" #do not remove the # at the end of the local topic
 LOCAL_USERNAME = "local-username-goes-here"
 LOCAL_PASSWORD = "local-password-goes-here"
 
-# Remote MQTT broker details
+# Remote broker details
 REMOTE_BROKER = "remote-mqtt-ip-or-hostname-here"
 REMOTE_PORT = 1883
 REMOTE_TOPIC_PREFIX = "egr/home/2/e/LongFast/"
@@ -54,21 +54,37 @@ REMOTE_PASSWORD = "remote-password-goes-here"
 #-----------------------------------------------#
 #####          STOP EDITING HERE            #####
 
+# Health check and failure tracking
+failure_count = 0
+failure_threshold = 5  # Number of consecutive failures before taking further action
+
+
 
 
 # Callback when a message is received from the local broker
 def on_local_message(client, userdata, message):
+    global failure_count
     # Construct the new topic
     local_topic_suffix = message.topic[len("msh/US/2/e/LongFast/"):]
     remote_topic = REMOTE_TOPIC_PREFIX + local_topic_suffix
 
-    # Publish the message to the remote broker
-    result = remote_client.publish(remote_topic, message.payload)
-    status = result.rc
-    if status == mqtt.MQTT_ERR_SUCCESS:
-        logger.info(f"Message sent to topic {remote_topic}")
-    else:
-        logger.error(f"Failed to send message to topic {remote_topic}")
+    # Try to publish the message to the remote broker
+    try:
+        result = remote_client.publish(remote_topic, message.payload)
+        status = result.rc
+        if status == mqtt.MQTT_ERR_SUCCESS:
+            logger.info(f"Message sent to topic {remote_topic}")
+            failure_count = 0  # Reset the failure count on success
+        else:
+            raise Exception("Publish failed")
+    except Exception as e:
+        failure_count += 1
+        logger.error(f"Failed to send message to topic {remote_topic}: {e}")
+        
+        # Retry logic: If the failure threshold is reached, attempt to reconnect
+        if failure_count >= failure_threshold:
+            logger.critical(f"Exceeded failure threshold. Attempting to reconnect...")
+            reconnect_brokers()
 
 
 # Callback for successful connection to the broker
@@ -88,21 +104,33 @@ def on_disconnect(client, userdata, rc):
             client.reconnect()
         except Exception as e:
             logger.error(f"Reconnection failed: {e}")
+            
+# Reconnect logic for both brokers
+def reconnect_brokers():
+    global failure_count
+    try:
+        logger.info("Reconnecting to local broker...")
+        local_client.reconnect()
+        logger.info("Reconnecting to remote broker...")
+        remote_client.reconnect()
+        failure_count = 0  # Reset the failure count after a successful reconnection
+    except Exception as e:
+        logger.error(f"Reconnection failed: {e}")
 
 
 
-# Create a client for the local broker
-local_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id="", protocol=mqtt.MQTTv5, transport="tcp")
+# Create a client for the local broker with old callback API version
+local_client = mqtt.Client(client_id="", protocol=mqtt.MQTTv5, transport="tcp")
 local_client.username_pw_set(LOCAL_USERNAME, LOCAL_PASSWORD)
 local_client.on_message = on_local_message
 local_client.on_connect = on_connect
-local_client.on_disconnect = on_disconnect  # Handle disconnects
+local_client.on_disconnect = on_disconnect
 
-# Create a client for the remote broker
-remote_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id="", protocol=mqtt.MQTTv5, transport="tcp")
+# Create a client for the remote broker with old callback API version
+remote_client = mqtt.Client(client_id="", protocol=mqtt.MQTTv5, transport="tcp")
 remote_client.username_pw_set(REMOTE_USERNAME, REMOTE_PASSWORD)
 remote_client.on_connect = on_connect
-remote_client.on_disconnect = on_disconnect  # Handle disconnects
+remote_client.on_disconnect = on_disconnect
 
 # Connect to the local broker
 def connect_local():
@@ -126,10 +154,13 @@ connect_remote()
 local_client.loop_start()
 remote_client.loop_start()
 
-# Keep the script running
+# Periodically check connection health and reduce CPU usage
 try:
     while True:
-        time.sleep(0.1)  # Add a small delay to reduce CPU usage
+        if not local_client.is_connected() or not remote_client.is_connected():
+            logger.warning("Detected disconnection, attempting to reconnect...")
+            reconnect_brokers()
+        time.sleep(0.5)  # Add a delay to reduce CPU usage and allow health checks
 except KeyboardInterrupt:
     pass
 
