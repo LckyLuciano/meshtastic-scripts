@@ -97,7 +97,7 @@ def on_connect(client, userdata, flags, rc, properties=None):
 
 
 # Callback when disconnected from a broker
-def on_disconnect(client, userdata, rc):
+def on_disconnect(client, userdata, rc, properties=None):
     if rc != 0:
         logger.warning(f"Unexpected disconnection from {client._host}, attempting to reconnect...")
         try:
