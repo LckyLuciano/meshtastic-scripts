@@ -57,6 +57,7 @@ REMOTE_PASSWORD = "remote-password-goes-here"
 # Health check and failure tracking
 failure_count = 0
 failure_threshold = 5  # Number of consecutive failures before taking further action
+reconnect_delay = 5  # Initial delay for reconnections (in seconds)
 
 
 
@@ -96,26 +97,28 @@ def on_connect(client, userdata, flags, rc, properties=None):
         logger.error(f"Connection failed with code {rc}")
 
 
-# Callback when disconnected from a broker
+# Callback when disconnected
 def on_disconnect(client, userdata, rc, properties=None):
     if rc != 0:
         logger.warning(f"Unexpected disconnection from {client._host}, attempting to reconnect...")
-        try:
-            client.reconnect()
-        except Exception as e:
-            logger.error(f"Reconnection failed: {e}")
-            
-# Reconnect logic for both brokers
+        time.sleep(reconnect_delay)  # Introduce delay before attempting to reconnect
+        reconnect_brokers()
+
+# Reconnect logic with delay and backoff
 def reconnect_brokers():
-    global failure_count
-    try:
-        logger.info("Reconnecting to local broker...")
-        local_client.reconnect()
-        logger.info("Reconnecting to remote broker...")
-        remote_client.reconnect()
-        failure_count = 0  # Reset the failure count after a successful reconnection
-    except Exception as e:
-        logger.error(f"Reconnection failed: {e}")
+    global failure_count, reconnect_delay
+    if not local_client.is_connected() or not remote_client.is_connected():
+        try:
+            logger.info("Reconnecting to local broker...")
+            local_client.reconnect()
+            logger.info("Reconnecting to remote broker...")
+            remote_client.reconnect()
+            reconnect_delay = 5  # Reset delay after successful reconnect
+            failure_count = 0  # Reset failure count after reconnecting
+        except Exception as e:
+            reconnect_delay = min(reconnect_delay * 2, 60)  # Exponential backoff up to 60s
+            logger.error(f"Reconnection failed: {e}. Retrying in {reconnect_delay} seconds.")
+
 
 
 
