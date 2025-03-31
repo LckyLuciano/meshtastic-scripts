@@ -2,7 +2,7 @@
 MQTT Topic Bridging Script for Meshtastic
 
 This script bridges MQTT topics from a local MQTT broker to a remote MQTT broker with topic transformation.
-It subscribes to a specified topic on the local broker, processes incoming messages, and republishes them on the remote broker with a different topic prefix. 
+It subscribes to a specified topic on the local broker, processes incoming messages, and republishes them on the remote broker with a different topic prefix.
 
 Features:
 - Connects to a local MQTT broker and subscribes to a specified topic.
@@ -21,7 +21,7 @@ To use:
 2. Update the script below with your specific MQTT broker details and credentials.
 3. (Optional) Update the path and enable the provided systemd service file to run the script as a service, auto-restarting on failure and reboot.
 
-Example: 
+Example:
 In the default setup below, incoming message from LOCAL_TOPIC msh/US/2/e/LongFast/ are republished on the remote server with REMOTE_TOPIC egr/home/2/e/LongFast/
 
 """
@@ -34,6 +34,7 @@ import time
 # Configure logging
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger()
+
 
 
 #####      EDIT THE DETAILS BELOW HERE      #####
@@ -93,7 +94,7 @@ def on_disconnect(client, userdata, rc, properties=None):
     global last_reconnect_attempt
     if rc != 0:
         logger.warning(f"Unexpected disconnection from {client._host}")
-        
+
         # Cooldown before attempting reconnection to avoid immediate retries
         if time.time() - last_reconnect_attempt > reconnect_delay:
             last_reconnect_attempt = time.time()
@@ -108,13 +109,13 @@ def reconnect_brokers():
             local_client.reconnect()
             logger.info("Reconnecting to remote broker...")
             remote_client.reconnect()
-            
+
             # Reset delay and failure count after a successful reconnect
             reconnect_delay = 5
             failure_count = 0
             last_reconnect_attempt = time.time()
             logger.info("Reconnected successfully to both brokers.")
-            
+
             # Stabilization delay after reconnection
             time.sleep(2)  # Adjust this delay if needed
         except Exception as e:
