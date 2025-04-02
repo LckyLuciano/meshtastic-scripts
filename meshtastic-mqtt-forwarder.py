@@ -30,11 +30,19 @@ import paho.mqtt.client as mqtt
 import logging
 import sys
 import time
+import json
+from datetime import datetime
+import socket
+
+hostname = socket.gethostname()
+
+# Unique and consistent ID per device
+REMOTE_CLIENT_ID = f"mqtt-forwarder-{hostname}"
+LOCAL_CLIENT_ID = f"mqtt-forwarder-local-{hostname}"
 
 # Configure logging
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger()
-
 
 
 #####      EDIT THE DETAILS BELOW HERE      #####
@@ -52,6 +60,10 @@ REMOTE_PORT = 1883
 REMOTE_TOPIC_PREFIX = "egr/home/2/e/LongFast/"
 REMOTE_USERNAME = "remote-username-goes-here"
 REMOTE_PASSWORD = "remote-password-goes-here"
+
+#Health Check Topic for Local Tracking
+HEALTH_TOPIC = "homemesh/bridge/status"
+HEALTH_INTERVAL = 60  # seconds
 #-----------------------------------------------#
 #####          STOP EDITING HERE            #####
 
@@ -60,6 +72,12 @@ failure_count = 0
 failure_threshold = 5
 reconnect_delay = 5  # Initial delay for reconnections (in seconds)
 last_reconnect_attempt = time.time()  # Track last reconnect attempt time
+last_health_publish = 0
+
+
+# Track whether each broker is currently connected
+local_connected = False
+remote_connected = False
 
 # Callback when a message is received from the local broker
 def on_local_message(client, userdata, message):
@@ -83,17 +101,26 @@ def on_local_message(client, userdata, message):
 
 # Callback for successful connection
 def on_connect(client, userdata, flags, rc, properties=None):
+    global local_connected, remote_connected
     if rc == 0:
         logger.info(f"Connected successfully to {client._host}")
-        client.subscribe(LOCAL_TOPIC)
+        if client == local_client:
+            local_connected = True
+            client.subscribe(LOCAL_TOPIC)
+        elif client == remote_client:
+            remote_connected = True
     else:
         logger.error(f"Connection failed with code {rc}")
 
 # Callback when disconnected
 def on_disconnect(client, userdata, rc, properties=None):
-    global last_reconnect_attempt
+    global last_reconnect_attempt, local_connected, remote_connected
     if rc != 0:
         logger.warning(f"Unexpected disconnection from {client._host}")
+        if client == local_client:
+            local_connected = False
+        elif client == remote_client:
+            remote_connected = False
 
         # Cooldown before attempting reconnection to avoid immediate retries
         if time.time() - last_reconnect_attempt > reconnect_delay:
@@ -124,16 +151,18 @@ def reconnect_brokers():
             logger.error(f"Reconnection failed: {e}. Retrying in {reconnect_delay} seconds.")
 
 # Create clients for local and remote brokers
-local_client = mqtt.Client(client_id="", protocol=mqtt.MQTTv5, transport="tcp")
+local_client = mqtt.Client(client_id=LOCAL_CLIENT_ID, protocol=mqtt.MQTTv5, transport="tcp")
 local_client.username_pw_set(LOCAL_USERNAME, LOCAL_PASSWORD)
 local_client.on_message = on_local_message
 local_client.on_connect = on_connect
 local_client.on_disconnect = on_disconnect
+local_client._clean_start = mqtt.MQTT_CLEAN_START_FIRST_ONLY
 
-remote_client = mqtt.Client(client_id="", protocol=mqtt.MQTTv5, transport="tcp")
+remote_client = mqtt.Client(client_id=REMOTE_CLIENT_ID, protocol=mqtt.MQTTv5, transport="tcp")
 remote_client.username_pw_set(REMOTE_USERNAME, REMOTE_PASSWORD)
 remote_client.on_connect = on_connect
 remote_client.on_disconnect = on_disconnect
+remote_client._clean_start = mqtt.MQTT_CLEAN_START_FIRST_ONLY
 
 # Connect to brokers
 def connect_local():
@@ -158,12 +187,30 @@ remote_client.loop_start()
 # Periodic connection health check
 try:
     while True:
+        now = time.time()
+
+        # Check for broker disconnection
         if not local_client.is_connected() or not remote_client.is_connected():
             logger.warning("Detected disconnection, attempting to reconnect...")
             reconnect_brokers()
-        time.sleep(1)  # Adjust as needed to reduce CPU usage
+
+        # Health check publishing
+        if now - last_health_publish >= HEALTH_INTERVAL and local_connected:
+            health_payload = {
+                "status": "ok",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            try:
+                local_client.publish(HEALTH_TOPIC, json.dumps(health_payload), qos=0, retain=True)
+                logger.info(f"Published health check to {HEALTH_TOPIC}")
+                last_health_publish = now
+            except Exception as e:
+                logger.error(f"Failed to publish health check: {e}")
+
+        time.sleep(1)  # adjust for CPU usage
 except KeyboardInterrupt:
     pass
+
 
 # Stop loop and disconnect
 local_client.loop_stop()
