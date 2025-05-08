@@ -31,7 +31,7 @@ import logging
 import sys
 import time
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import socket
 
 hostname = socket.gethostname()
@@ -198,7 +198,7 @@ try:
         if now - last_health_publish >= HEALTH_INTERVAL and local_connected:
             health_payload = {
                 "status": "ok",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
             try:
                 local_client.publish(HEALTH_TOPIC, json.dumps(health_payload), qos=0, retain=True)
